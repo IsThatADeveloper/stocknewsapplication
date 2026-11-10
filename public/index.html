@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>StockDash — Company News</title>
+  <style>
+    :root { --accent:#5953cc; --accent-soft:#f0efff; --text:#1d2233; --muted:#6f7688; --line:#e9eaf0; --bg:#f7f8fb; --white:#fff; }
+    * { box-sizing:border-box; }
+    body { margin:0; font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; color:var(--text); background:var(--bg); }
+    button,input,select,textarea { font:inherit; }
+    button { cursor:pointer; }
+    .topbar { background:var(--white); border-bottom:1px solid var(--line); }
+    .nav-inner { max-width:1100px; min-height:63px; margin:auto; display:flex; align-items:center; flex-wrap:wrap; gap:22px; padding:11px 24px; }
+    .brand { font-size:18px; font-weight:760; letter-spacing:-.4px; color:#222342; text-decoration:none; white-space:nowrap; }
+    .brand-mark { color:var(--accent); margin-right:6px; }
+    .nav-links { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .nav-links a { display:inline-flex; padding:7px 11px; text-decoration:none; font-weight:550; color:#697087; border-radius:7px; }
+    .nav-links a:hover { color:var(--accent); background:var(--accent-soft); }
+    .nav-links a.active { color:var(--accent); background:var(--accent-soft); }
+    main { max-width:1100px; padding:34px 24px 60px; margin:auto; }
+    .heading-eyebrow { font-size:11px; letter-spacing:1.8px; text-transform:uppercase; color:var(--accent); font-weight:750; }
+    h1 { font-size:30px; letter-spacing:-.8px; line-height:1.2; margin:7px 0 7px; }
+    .subheading { color:var(--muted); font-size:13px; margin:0; }
+    .search-section { padding-bottom:25px; }
+    .search-row { display:flex; gap:10px; max-width:660px; margin-top:21px; }
+    .search-row input { width:100%; min-width:0; height:44px; padding:0 15px; border-radius:9px; border:1px solid #d9dce8; background:white; outline:none; font-size:15px; font-weight:600; letter-spacing:.6px; }
+    .search-row input:focus { border-color:var(--accent); box-shadow:0 0 0 3px #ecebff; }
+    .primary-btn { height:44px; background:var(--accent); border:1px solid var(--accent); color:white; padding:0 22px; border-radius:9px; font-weight:700; white-space:nowrap; }
+    .primary-btn:hover { background:#4943bc; }
+    button:disabled { opacity:.55; cursor:wait; }
+    .loading { color:var(--muted); font-size:12px; margin:10px 0; display:none; }
+    .loading.active { display:block; }
+    .error { display:none; margin-top:12px; background:#fff4f4; border:1px solid #f2d6d6; color:#9e3535; padding:11px 13px; border-radius:8px; }
+    .error.active { display:block; }
+    .news-panel { background:var(--white); border:1px solid var(--line); border-radius:13px; overflow:hidden; box-shadow:0 8px 30px rgba(33,36,64,.025); }
+    .feed-head { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; padding:20px 23px 16px; gap:16px; }
+    .feed-title-row { display:flex; align-items:center; gap:12px; }
+    .feed-title { margin:0; font-size:21px; letter-spacing:-.35px; }
+    .count { color:#7c8290; font-size:12px; background:#f3f4f7; border-radius:20px; padding:3px 9px; }
+    .checked { color:#8a8d9b; font-size:12px; margin-top:4px; }
+    .feed-actions { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+    .refresh-btn { display:inline-flex; align-items:center; gap:6px; border:1px solid #dfe1eb; border-radius:7px; background:white; color:#474c60; padding:7px 12px; font-weight:600; }
+    .refresh-btn:hover { background:#f7f7ff; border-color:#d1cffb; }
+    .auto-label { display:flex; align-items:center; gap:7px; color:#767b89; font-size:12px; cursor:pointer; }
+    .auto-label input { accent-color:var(--accent); width:15px; height:15px; }
+    .feed-toolbar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; border-bottom:1px solid var(--line); padding:0 23px 15px; }
+    .feed-link { color:var(--accent); text-decoration:none; font-size:12px; font-weight:650; }
+    .feed-link:hover { text-decoration:underline; }
+    .more-options { position:relative; color:#737a8a; font-size:12px; }
+    .more-options > summary { list-style:none; cursor:pointer; user-select:none; font-weight:600; }
+    .more-options > summary::-webkit-details-marker { display:none; }
+    .more-options > summary:hover { color:var(--accent); }
+    .option-content { max-width:650px; margin:14px 0 4px; padding:14px; border:1px solid var(--line); background:#fbfbfd; border-radius:8px; color:#5c6271; font-size:12px; }
+    .option-content button { padding:7px 11px; background:white; color:#4c4c70; border:1px solid #dedfed; border-radius:7px; margin-right:8px; }
+    .option-content select { padding:6px; margin:0 8px; border:1px solid #dedfed; border-radius:6px; }
+    .option-content p { margin:10px 0; }
+    .source-status { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
+    .src-pill { color:#7c8190; background:#f0f1f6; padding:3px 8px; border-radius:5px; }
+    .src-pill.ok { color:#356d52; background:#eaf6ee; }
+    .src-pill.fail { color:#ab5d3b; background:#fff1e8; }
+    .manual-panel { margin-top:12px; }
+    .manual-panel summary { cursor:pointer; }
+    .manual-panel textarea { display:block; width:100%; min-height:100px; resize:vertical; margin:9px 0; padding:10px; border:1px solid #dedfed; border-radius:7px; font-size:12px; font-family:Consolas,monospace; }
+    .import-status { margin:7px 0; font-size:12px; }
+    .notice { margin:0; padding:11px 23px; color:#896125; background:#fffaf0; border-top:1px solid #f6ead4; font-size:12px; }
+    .notice:empty { display:none; }
+    .news-item { display:grid; grid-template-columns:minmax(0,1fr) 156px; align-items:center; gap:24px; padding:17px 23px; border-top:1px solid var(--line); transition:background .15s; }
+    .news-item:first-child { border-top:none; }
+    .news-item:hover { background:#fafaff; }
+    .item-time { color:#8990a0; font-size:11px; letter-spacing:.1px; margin-bottom:6px; }
+    .fresh-dot { width:6px; height:6px; border-radius:50%; background:#4bae83; display:inline-block; margin-right:6px; vertical-align:2px; }
+    .headline { font-size:15px; line-height:1.45; font-weight:640; letter-spacing:-.08px; margin:0; }
+    .headline a { color:#20263a; text-decoration:none; }
+    .headline a:hover { color:var(--accent); text-decoration:underline; text-underline-offset:3px; }
+    .rhea-col { min-width:0; text-align:right; }
+    .rhea-label { color:#9296a3; font-size:10px; letter-spacing:.65px; text-transform:uppercase; font-weight:700; margin-bottom:4px; }
+    .rhea-impact { font-size:13px; font-weight:720; line-height:1.3; color:#494659; }
+    .rhea-impact.strong { color:#7152b6; }
+    .rhea-impact.weak { color:#647180; }
+    .rhea-sentiment { color:#7b8190; font-size:11px; margin-top:3px; }
+    .rhea-sentiment.positive { color:#277d56; }
+    .rhea-sentiment.negative { color:#aa5358; }
+    .rhea-missing { color:#a1a4ad; font-size:11px; }
+    .no-news { padding:48px 20px; text-align:center; color:#73798a; font-size:13px; }
+    .no-news a { color:var(--accent); display:inline-block; margin-top:10px; font-weight:600; }
+    .footnote { margin:14px 2px; font-size:11px; color:#999dab; }
+    @media (max-width:680px) {
+      main { padding:26px 14px 50px; }
+      .nav-inner { padding:10px 15px; gap:8px; }
+      .nav-links { gap:0; }
+      .nav-links a { padding:6px 8px; font-size:12px; }
+      h1 { font-size:26px; }
+      .search-row { gap:8px; }
+      .primary-btn { padding:0 14px; }
+      .feed-head { padding:18px 16px 14px; }
+      .feed-toolbar { padding:0 16px 13px; }
+      .news-item { padding:15px 16px; grid-template-columns:minmax(0,1fr) 91px; gap:9px; }
+      .headline { font-size:14px; }
+      .rhea-impact { font-size:12px; }
+      .rhea-col { padding-left:4px; }
+      .notice { padding:10px 16px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar"><nav class="nav-inner" aria-label="Main navigation">
+    <a class="brand" href="index.html"><span class="brand-mark">◈</span>StockDash</a>
+    <div class="nav-links">
+      <a href="index.html" class="active" aria-current="page">News</a>
+      <a href="halts.html">Trading Halts</a>
+      <a href="splits.html">Stock Splits</a>
+    </div>
+  </nav></header>
+  <main>
+    <section class="search-section" aria-label="Find company news">
+      <span class="heading-eyebrow">Market intelligence</span>
+      <h1>Company news</h1>
+      <p class="subheading">Headlines and Rhea-AI ratings at a glance. Open any headline for the full story.</p>
+      <form id="tickerForm" class="search-row">
+        <input id="tickerInput" name="ticker" type="text" value="SPAI" maxlength="10" placeholder="Enter stock ticker" autocomplete="off" aria-label="Stock ticker">
+        <button id="searchBtn" class="primary-btn" type="submit">Search news</button>
+      </form>
+      <div class="loading" id="stockLoading" aria-live="polite">Checking StockTitan…</div>
+      <div class="error" id="stockError" role="alert"></div>
+    </section>
+    <section id="stockResults" class="news-panel" style="display:none" aria-label="Company headlines">
+      <div class="feed-head">
+        <div>
+          <div class="feed-title-row"><h2 id="feedTitle" class="feed-title">SPAI news</h2><span id="newsCount" class="count"></span></div>
+          <div id="checkedAt" class="checked" aria-live="polite"></div>
+        </div>
+        <div class="feed-actions">
+          <button id="refreshBtn" class="refresh-btn" type="button">↻ Refresh</button>
+          <label class="auto-label"><input type="checkbox" id="autoRefresh" checked> Auto-refresh 20s</label>
+        </div>
+      </div>
+      <div class="feed-toolbar">
+        <a id="stocktitanLink" class="feed-link" href="https://www.stocktitan.net/news/SPAI/" target="_blank" rel="noopener noreferrer">View full StockTitan page ↗</a>
+        <details class="more-options" id="advancedOptions">
+          <summary>More options ▾</summary>
+          <div class="option-content">
+            <div>
+              <button id="moreNewsBtn" type="button">Include other news sources</button>
+              <label for="sortSelect">Sort</label>
+              <select id="sortSelect"><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select>
+            </div>
+            <p id="sourceNote">StockTitan ticker page first, with RSS fallback if needed.</p>
+            <div class="source-status" id="sourceStatus"></div>
+            <details class="manual-panel" id="manualImport">
+              <summary>Import saved StockTitan HTML</summary>
+              <p>Preview a saved HTML snapshot. This does not automatically fetch or update the original page.</p>
+              <textarea id="importHtml" placeholder="Paste HTML from StockTitan's ticker news page"></textarea>
+              <button id="importBtn" type="button">Preview saved HTML</button>
+              <button id="clearImportBtn" type="button">Clear preview</button>
+              <div class="import-status" id="importStatus" aria-live="polite"></div>
+            </details>
+          </div>
+        </details>
+      </div>
+      <div id="partialWarn" class="notice" role="status"></div>
+      <div id="newsContainer"></div>
+    </section>
+    <p class="footnote">Rhea-AI ratings are supplied by StockTitan and are not predictions of future stock returns. Headlines may be delayed by the source.</p>
+  </main>
+  <script>
+    'use strict';
+    const input = document.getElementById('tickerInput');
+    const loading = document.getElementById('stockLoading');
+    const errorBox = document.getElementById('stockError');
+    const results = document.getElementById('stockResults');
+    const searchBtn = document.getElementById('searchBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const autoRefresh = document.getElementById('autoRefresh');
+    const holder = document.getElementById('newsContainer');
+    let fetchedNewsItems = [];
+    let importedNewsItems = [];
+    let currentTicker = '';
+    let sortOrder = 'newest';
+    let currentRequest = 0;
+    let controller = null;
+
+    function el(tag, className='', content) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (content !== undefined) node.textContent = content;
+      return node;
+    }
+    function formatDate(iso) {
+      const ms = Date.parse(iso || '');
+      if (!Number.isFinite(ms)) return 'Time not available';
+      return new Intl.DateTimeFormat('en-US', {
+        timeZone:'America/New_York', month:'short', day:'numeric', year:'numeric',
+        hour:'numeric', minute:'2-digit', hour12:true
+      }).format(new Date(ms)) + ' ET';
+    }
+    function recent(iso) {
+      const ms = Date.parse(iso || '');
+      return Number.isFinite(ms) && ms <= Date.now() && Date.now()-ms <= 60*60*1000;
+    }
+    function normalizedRating(text, prefix) {
+      if (!text) return '';
+      return String(text).replace(new RegExp(`^${prefix}\\s*:\\s*`, 'i'), '').trim();
+    }
+    function safeArticleUrl(value) {
+      try {
+        const url = new URL(value);
+        if (url.protocol === 'https:' || url.protocol === 'http:') return url.href;
+      } catch { /* Invalid/untrusted link: do not navigate. */ }
+      return '';
+    }
+    function mergedNews() {
+      const seen = new Set();
+      return [...importedNewsItems,...fetchedNewsItems].filter(article => {
+        const key = article.url || article.title;
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+    function renderNews() {
+      const articles = mergedNews().sort((a,b) => {
+        const aTime = Date.parse(a.publishedAt || '') || 0;
+        const bTime = Date.parse(b.publishedAt || '') || 0;
+        return sortOrder === 'oldest' ? aTime-bTime : bTime-aTime;
+      });
+      document.getElementById('newsCount').textContent = `${articles.length} article${articles.length === 1 ? '' : 's'}`;
+      holder.replaceChildren();
+      if (!articles.length) {
+        const empty = el('div','no-news','No headlines returned from the available sources. This does not mean the company has no news.');
+        const link = el('a','','Check the full StockTitan company page ↗');
+        link.href = `https://www.stocktitan.net/news/${currentTicker}/`;
+        link.rel = 'noopener noreferrer'; link.target = '_blank';
+        empty.append(el('br'),link);
+        holder.append(empty);
+        return;
+      }
+      for (const story of articles) {
+        const row = el('article','news-item');
+        const left = el('div','news-main');
+        const ts = el('div','item-time');
+        if (recent(story.publishedAt)) ts.append(el('span','fresh-dot'));
+        ts.append(document.createTextNode(formatDate(story.publishedAt)));
+        const title = el('h3','headline');
+        const link = el('a','',story.title || 'Untitled story');
+        const safe = safeArticleUrl(story.url);
+        if (safe) { link.href = safe; link.target='_blank'; link.rel='noopener noreferrer'; }
+        title.append(link); left.append(ts,title);
+        const rhea = el('div','rhea-col');
+        const impact = normalizedRating(story.impact, 'Impact');
+        const sentiment = normalizedRating(story.sentiment, 'Sentiment');
+        if (impact || sentiment) {
+          rhea.append(el('div','rhea-label','Rhea-AI'));
+          if (impact) {
+            const level = /high|strong|significant|very/i.test(impact) ? 'strong' : /low|weak|minimal/i.test(impact) ? 'weak' : '';
+            rhea.append(el('div',`rhea-impact ${level}`,`Impact: ${impact}`));
+          }
+          if (sentiment) {
+            const tone = /positive/i.test(sentiment) ? 'positive' : /negative/i.test(sentiment) ? 'negative' : '';
+            rhea.append(el('div',`rhea-sentiment ${tone}`,sentiment));
+          }
+        } else {
+          rhea.append(el('div','rhea-label','Rhea-AI'));
+          rhea.append(el('div','rhea-missing','Not available'));
+        }
+        row.append(left,rhea);
+        holder.append(row);
+      }
+    }
+    function displaySources(providers) {
+      const node = document.getElementById('sourceStatus'); node.replaceChildren();
+      for (const p of providers || []) {
+        const tag = el('span',`src-pill ${p.status === 'ok' ? 'ok' : p.status === 'error' ? 'fail' : ''}`,
+          `${p.name}: ${p.status === 'error' ? 'unavailable' : `${p.count} stories`}`);
+        node.append(tag);
+      }
+    }
+    function showError(message) {
+      errorBox.textContent = message;
+      errorBox.classList.add('active');
+    }
+    function importStockTitanHtml() {
+      const ticker = input.value.trim().toUpperCase();
+      const status = document.getElementById('importStatus');
+      if (ticker !== currentTicker) { status.textContent = 'Search this ticker before importing its HTML.'; return; }
+      if (!/^[A-Z][A-Z0-9.\-]{0,9}$/.test(ticker)) { status.textContent = 'Enter a valid ticker.'; return; }
+      const source = document.getElementById('importHtml').value;
+      if (!source.trim()) { status.textContent = 'Paste a saved StockTitan HTML snippet.'; return; }
+      if (source.length > 2_000_000) { status.textContent = 'HTML exceeds the 2 MB limit.'; return; }
+      const doc = new DOMParser().parseFromString(source, 'text/html');
+      const found = []; const seen = new Set();
+      for (const card of doc.querySelectorAll('.news-feed-content')) {
+        const anchor = card.querySelector('.companies-news-title a[href]');
+        const timeEl = card.querySelector('time[datetime]');
+        if (!anchor || !timeEl) continue;
+        let url;
+        try { url = new URL(anchor.getAttribute('href'),'https://www.stocktitan.net'); } catch { continue; }
+        if (!['stocktitan.net','www.stocktitan.net'].includes(url.hostname)) continue;
+        if (!url.pathname.toUpperCase().startsWith(`/NEWS/${ticker}/`) || seen.has(url.href)) continue;
+        const published = Date.parse(timeEl.getAttribute('datetime') || '');
+        if (!Number.isFinite(published)) continue;
+        const group = card.closest('.d-lg-flex') || card.parentElement;
+        const scores = group?.querySelector('.companies-rhea-scores');
+        const title = anchor.textContent.trim();
+        if (!title) continue;
+        seen.add(url.href);
+        found.push({title, url:url.href, publishedAt:new Date(published).toISOString(),
+          source:'StockTitan (saved HTML)', manualImport:true,
+          impact:scores?.querySelector('.impact-bar')?.getAttribute('aria-label') || '',
+          sentiment:scores?.querySelector('.sentiment-bar')?.getAttribute('aria-label') || ''});
+      }
+      importedNewsItems = found;
+      renderNews();
+      status.textContent = found.length ? `Imported ${found.length} saved article(s). The HTML snapshot does not refresh.` : 'No matching ticker articles found.';
+    }
+    function clearImportedHtml() {
+      importedNewsItems = [];
+      document.getElementById('importHtml').value = '';
+      document.getElementById('importStatus').textContent = 'Saved HTML preview cleared.';
+      renderNews();
+    }
+    async function searchStock(silent=false, mode='fast') {
+      const ticker = input.value.trim().toUpperCase();
+      if (!/^[A-Z][A-Z0-9.\-]{0,9}$/.test(ticker)) {
+        if (!silent) showError('Enter a valid ticker, such as SPAI, OMH, or AAPL.');
+        return;
+      }
+      if (currentTicker && currentTicker !== ticker) {
+        fetchedNewsItems = [];
+        results.style.display = 'none';
+        importedNewsItems = [];
+        document.getElementById('importHtml').value = '';
+        document.getElementById('importStatus').textContent = '';
+      }
+      currentTicker = ticker;
+      document.getElementById('feedTitle').textContent = `${ticker} news`;
+      document.getElementById('stocktitanLink').href = `https://www.stocktitan.net/news/${ticker}/`;
+      const serial = ++currentRequest;
+      if (controller) controller.abort();
+      controller = new AbortController();
+      if (!silent) loading.classList.add('active');
+      searchBtn.disabled = true;
+      refreshBtn.disabled = true;
+      errorBox.classList.remove('active');
+      // Preserve existing headlines during refresh so there's no visual flicker.
+      try {
+        const response = await fetch(`/api/news?ticker=${encodeURIComponent(ticker)}&mode=${encodeURIComponent(mode)}`,
+          {signal:controller.signal,cache:'no-store'});
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+        if (serial !== currentRequest) return;
+        fetchedNewsItems = Array.isArray(data.articles) ? data.articles : [];
+        renderNews();
+        displaySources(data.providers);
+        document.getElementById('checkedAt').textContent = `Updated ${new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true}).format(new Date())} ET`;
+        document.getElementById('sourceNote').textContent = data.primarySource === 'StockTitan company page'
+          ? 'Direct StockTitan ticker page. Rhea-AI scores are provided by StockTitan.'
+          : 'Direct StockTitan access unavailable; using RSS fallback. RSS contains only recent market-wide posts.';
+        const warnings = Array.isArray(data.warnings) ? data.warnings : [];
+        const note = document.getElementById('partialWarn');
+        // Keep the main view quiet if a secondary provider failed but headlines were returned.
+        note.textContent = !fetchedNewsItems.length && warnings.length
+          ? 'Direct ticker news was unavailable. Check the StockTitan link or open More options for source details.' : '';
+        results.style.display = 'block';
+      } catch (err) {
+        if (serial !== currentRequest || err.name === 'AbortError') return;
+        showError(`${err.message} · Check the local server or Vercel API logs.`);
+        if (!silent && !fetchedNewsItems.length) results.style.display = 'none';
+      } finally {
+        if (serial === currentRequest) {
+          loading.classList.remove('active');
+          searchBtn.disabled = false;
+          refreshBtn.disabled = false;
+        }
+      }
+    }
+    document.getElementById('tickerForm').addEventListener('submit',event=>{
+      event.preventDefault(); searchStock(false,'fast');
+    });
+    refreshBtn.addEventListener('click',()=>searchStock(true,'fast'));
+    document.getElementById('moreNewsBtn').addEventListener('click',()=>searchStock(true,'more'));
+    document.getElementById('sortSelect').addEventListener('change', event => {
+      sortOrder = event.target.value; renderNews();
+    });
+    document.getElementById('importBtn').addEventListener('click',importStockTitanHtml);
+    document.getElementById('clearImportBtn').addEventListener('click',clearImportedHtml);
+    window.addEventListener('load',()=>searchStock());
+    window.setInterval(()=>{
+      if (autoRefresh.checked && currentTicker && input.value.trim().toUpperCase() === currentTicker && document.visibilityState === 'visible') {
+        searchStock(true,'fast');
+      }
+    },20_000);
+  </script>
+</body>
+</html>

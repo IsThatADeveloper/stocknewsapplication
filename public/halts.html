@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="data:,">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Halts</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        nav {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 0 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            height: 56px;
+        }
+
+        .nav-logo {
+            color: white;
+            font-weight: 700;
+            font-size: 18px;
+            margin-right: 16px;
+            white-space: nowrap;
+        }
+
+        .nav-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            padding: 7px 18px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-btn.active {
+            background: white;
+            color: #667eea;
+            border-color: white;
+        }
+
+        .page {
+            padding: 24px 20px;
+        }
+
+        .inner {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 28px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            margin-bottom: 24px;
+        }
+
+        .card h2 {
+            color: #333;
+            font-size: 22px;
+            margin-bottom: 20px;
+        }
+
+        .halts-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .halts-header h2 {
+            margin-bottom: 0;
+        }
+
+        .halts-meta {
+            color: #888;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        .btn-reload {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 9px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-reload:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn-reload:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-reload svg {
+            transition: transform 0.6s;
+        }
+
+        .btn-reload.spinning svg {
+            animation: spin 0.8s linear infinite;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 38px;
+            height: 38px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .halts-filters {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+
+        .filter-btn {
+            padding: 5px 14px;
+            border-radius: 20px;
+            border: 1px solid #ddd;
+            background: white;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.15s;
+            color: #555;
+        }
+
+        .filter-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .halts-table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        thead th {
+            background: #f8f9fa;
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #555;
+            border-bottom: 2px solid #e0e0e0;
+            white-space: nowrap;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.1s;
+        }
+
+        tbody tr:hover {
+            background: #fafafa;
+        }
+
+        tbody td {
+            padding: 10px 12px;
+            color: #333;
+            vertical-align: middle;
+        }
+
+        .halt-type {
+            display: inline-block;
+            padding: 3px 9px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .halt-type.luld {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .halt-type.news {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        .halt-type.regulatory {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .halt-type.other {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .resumption-badge {
+            display: inline-block;
+            padding: 3px 9px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .resumption-badge.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .resumption-badge.resumed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .resumption-badge.estimated {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .resumption-badge.indefinite {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .ticker-chip {
+            font-weight: 700;
+            color: #667eea;
+            font-size: 14px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px 20px;
+            color: #aaa;
+        }
+
+        .empty-state svg {
+            margin-bottom: 12px;
+            opacity: 0.4;
+        }
+
+        .halts-loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            display: none;
+        }
+
+        .halts-loading.active {
+            display: block;
+        }
+
+        .error-box {
+            background: #fee;
+            color: #c00;
+            padding: 14px;
+            border-radius: 8px;
+            margin-top: 12px;
+            display: none;
+        }
+
+        .error-box.active {
+            display: block;
+        }
+
+        .legend {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            padding: 14px 18px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 18px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        @media (max-width: 600px) {
+            table {
+                font-size: 12px;
+            }
+
+            thead th,
+            tbody td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <nav>
+        <div class="nav-inner">
+            <a href="index.html" class="nav-logo" style="text-decoration:none">📈 StockDash</a>
+            <a href="index.html" class="nav-btn">🔍 Stock Search</a>
+            <a href="halts.html" class="nav-btn active">🚫 Trading Halts</a>
+            <a href="splits.html" class="nav-btn">✂️ Stock Splits</a>
+        </div>
+    </nav>
+
+    <div class="page">
+        <div class="inner">
+            <div class="card">
+                <div class="halts-header">
+                    <div>
+                        <h2>🚫 Trading Halts</h2>
+                        <div class="halts-meta" id="haltsMeta">Loading...</div>
+                    </div>
+                    <button class="btn-reload" id="reloadBtn" onclick="loadHalts(false); startAutoRefresh();">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <path d="M1 4v6h6" />
+                            <path d="M23 20v-6h-6" />
+                            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
+                        </svg>
+                        Reload
+                    </button>
+                </div>
+
+                <div class="legend">
+                    <strong style="color:#333">Halt Types:</strong>
+                    <span class="legend-item"><span class="halt-type luld">LULD</span> Limit Up/Limit Down volatility
+                        pause — resumes in 5 min increments (max 10 min)</span>
+                    <span class="legend-item"><span class="halt-type news">News</span> News Pending/Dissemination —
+                        resumes after news released (minutes to hours)</span>
+                    <span class="legend-item"><span class="halt-type regulatory">Regulatory</span> SEC/Regulatory
+                        concern — can last 10 trading days</span>
+                </div>
+
+                <div class="halts-filters">
+                    <button class="filter-btn active" onclick="filterHalts('all', this)">All</button>
+                    <button class="filter-btn" onclick="filterHalts('luld', this)">LULD Only</button>
+                    <button class="filter-btn" onclick="filterHalts('news', this)">News Only</button>
+                    <button class="filter-btn" onclick="filterHalts('regulatory', this)">Regulatory</button>
+                    <button class="filter-btn" onclick="filterHalts('active', this)">🔴 Still Halted</button>
+                    <button class="filter-btn" onclick="filterHalts('resumed', this)">✅ Resumed</button>
+                </div>
+
+                <div class="halts-loading" id="haltsLoading">
+                    <div class="spinner" style="margin:0 auto 10px"></div>
+                    Loading halts data...
+                </div>
+                <div class="error-box" id="haltsError"></div>
+
+                <div class="halts-table-wrap">
+                    <table id="haltsTable">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Halt Time</th>
+                                <th>Symbol</th>
+                                <th>Company</th>
+                                <th>Exchange</th>
+                                <th>Reason</th>
+                                <th>Resume Time</th>
+                                <th>Est. Resumption (5 / 10 min)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="haltsBody"></tbody>
+                    </table>
+                    <div class="empty-state" id="haltsEmpty" style="display:none">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        <p>No halts match this filter.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── exact halt logic from 906-line working version ──
+        let allHalts = [];
+        let currentFilter = 'all';
+        let autoRefreshTimer = null;
+        const AUTO_REFRESH_MS = 30000;
+
+        async function fetchWithTimeout(url, ms = 8000) {
+            const ctrl = new AbortController();
+            const t = setTimeout(() => ctrl.abort(), ms);
+            try {
+                const r = await fetch(url, { signal: ctrl.signal });
+                clearTimeout(t);
+                return r;
+            } catch (e) { clearTimeout(t); throw e; }
+        }
+
+        function estimateLuldResumption(haltTimeStr) {
+            try {
+                const [h, m, s] = haltTimeStr.split(':').map(Number);
+                const fmt = dt => dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) + ' ET';
+                const d5 = new Date(); d5.setHours(h, m + 5, s, 0);
+                const d10 = new Date(); d10.setHours(h, m + 10, s, 0);
+                return { five: fmt(d5), ten: fmt(d10) };
+            } catch { return null; }
+        }
+
+        function getHaltTypeBadge(reason) {
+            const r = (reason || '').toUpperCase().trim();
+            const rl = r.toLowerCase();
+            if (['T1', 'T2', 'T5', 'T6', 'LUDP', 'M', 'MWC1', 'MWC2', 'MWC3', 'MWC4'].includes(r) ||
+                rl.includes('luld') || rl.includes('limit up') || rl.includes('limit down') ||
+                rl.includes('volatility') || rl.includes('circuit breaker') || rl.includes('pause'))
+                return { cls: 'luld', label: 'LULD' };
+            if (['T3', 'T7', 'T8', 'T12', 'H10', 'H11'].includes(r) ||
+                rl.includes('news') || rl.includes('information requested') || rl.includes('additional info'))
+                return { cls: 'news', label: 'News' };
+            if (['H4', 'H9', 'R4', 'R9', 'C11', 'D', 'U1'].includes(r) ||
+                rl.includes('regulat') || rl.includes('sec') || rl.includes('suspension') || rl.includes('concern'))
+                return { cls: 'regulatory', label: 'Regulatory' };
+            if (['IPO1', 'M1', 'M2'].includes(r) || rl.includes('ipo') || rl.includes('listing'))
+                return { cls: 'other', label: 'IPO/Open' };
+            return { cls: 'other', label: r || 'Other' };
+        }
+
+        function getHaltInfo(reason, haltTime, resumeTime) {
+            const r = (reason || '').toUpperCase().trim();
+            const rl = r.toLowerCase();
+            if (resumeTime && resumeTime.trim()) return { label: '✅ ' + resumeTime, cls: 'resumed' };
+            const isLuld = ['T1', 'T2', 'T5', 'T6', 'LUDP', 'M', 'MWC1', 'MWC2', 'MWC3', 'MWC4'].includes(r) ||
+                rl.includes('luld') || rl.includes('limit') || rl.includes('volatility') || rl.includes('circuit') || rl.includes('pause');
+            const isPending = r === 'T3' || rl.includes('news pending');
+            const isDissem = r === 'T7' || rl.includes('dissemination');
+            const isNews = ['T3', 'T7', 'T8', 'T12', 'H10', 'H11'].includes(r) || rl.includes('news');
+            const isReg = ['H4', 'H9', 'R4', 'R9', 'C11', 'D', 'U1'].includes(r) || rl.includes('regulat') || rl.includes('sec') || rl.includes('suspension') || rl.includes('concern');
+            if (isLuld) {
+                const est = estimateLuldResumption(haltTime);
+                if (est) return { label: `⏱ ${est.five} / ${est.ten}`, five: est.five, ten: est.ten, cls: 'estimated' };
+                return { label: '+5 min / +10 min', cls: 'estimated' };
+            }
+            if (isPending) return { label: '📰 Awaiting news release', cls: 'pending' };
+            if (isDissem) return { label: '📰 ~15–60 min', cls: 'pending' };
+            if (isNews) return { label: '📰 Pending news', cls: 'pending' };
+            if (isReg) return { label: '⛔ Up to 10 days', cls: 'indefinite' };
+            if (rl.includes('ipo') || rl.includes('listing')) return { label: '~30–60 min', cls: 'estimated' };
+            return { label: 'Unknown', cls: 'pending' };
+        }
+
+        async function loadHalts(silent = false) {
+            const reloadBtn = document.getElementById('reloadBtn');
+            const haltsLoading = document.getElementById('haltsLoading');
+            const haltsError = document.getElementById('haltsError');
+
+            if (!silent) {
+                reloadBtn.disabled = true;
+                reloadBtn.classList.add('spinning');
+                haltsLoading.classList.add('active');
+                haltsError.classList.remove('active');
+                document.getElementById('haltsBody').innerHTML = '';
+                document.getElementById('haltsEmpty').style.display = 'none';
+            } else {
+                reloadBtn.classList.add('spinning');
+            }
+
+            try {
+                const csvUrl = 'https://www.nyse.com/api/trade-halts/current/download';
+                let csvText = null;
+
+                // Local Python backend fetches NYSE; no browser CORS or public proxy needed.
+                const proxyUrl = `/api/proxy?url=${encodeURIComponent(csvUrl)}`;
+                try {
+                    const res = await fetchWithTimeout(proxyUrl, 12000);
+                    if (!res.ok) throw new Error(`NYSE endpoint returned HTTP ${res.status}`);
+                    const text = await res.text();
+                    if (text && text.length > 10) csvText = text;
+                } catch (e) { console.warn('[Halts] Local backend:', e.message); }
+
+                if (!csvText) throw new Error('Could not reach NYSE through the local Python backend.');
+
+                console.log('[Halts] Raw CSV length:', csvText.length);
+                console.log('[Halts] First 500 chars:', csvText.slice(0, 500));
+
+                const fresh = parseHaltsCsv(csvText);
+
+                if (silent && allHalts.length > 0) {
+                    const existing = new Set(allHalts.map(h => `${h.symbol}-${h.haltTime}`));
+                    const newHalts = fresh.filter(h => !existing.has(`${h.symbol}-${h.haltTime}`));
+                    if (newHalts.length > 0) flashNewHalts(newHalts);
+                    else updateMeta(fresh.length, true);
+                    return;
+                }
+
+                allHalts = fresh;
+                updateMeta(allHalts.length, false);
+                renderHalts(currentFilter);
+                haltsError.classList.remove('active');
+
+            } catch (err) {
+                console.error('Halts fetch error:', err.message);
+                if (!silent) {
+                    haltsError.innerHTML = `<strong>Could not fetch live halt data.</strong> ${err.message}<br><br>
+                <strong>Fix:</strong> Serve this file over HTTP:<br>
+                <code style="background:#f4f4f4;padding:4px 8px;border-radius:4px;display:inline-block;margin-top:6px">python launch.py</code>
+               `;
+                    haltsError.classList.add('active');
+                }
+            } finally {
+                haltsLoading.classList.remove('active');
+                reloadBtn.disabled = false;
+                reloadBtn.classList.remove('spinning');
+            }
+        }
+
+        function updateMeta(count, noChange) {
+            const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+            document.getElementById('haltsMeta').textContent =
+                `${count} halts · Last checked ${time} ET${noChange ? ' · No new halts' : ''} · Auto-refreshing every 30s`;
+        }
+
+        function flashNewHalts(newHalts) {
+            allHalts = [...newHalts, ...allHalts];
+            renderHalts(currentFilter);
+            updateMeta(allHalts.length, false);
+            const rows = document.querySelectorAll('#haltsBody tr');
+            for (let i = 0; i < Math.min(newHalts.length, rows.length); i++) {
+                rows[i].style.transition = 'background 0.3s';
+                rows[i].style.background = '#d4edda';
+                setTimeout(() => { rows[i].style.background = ''; }, 2500);
+            }
+        }
+
+        function startAutoRefresh() {
+            stopAutoRefresh();
+            autoRefreshTimer = setInterval(() => loadHalts(true), AUTO_REFRESH_MS);
+        }
+
+        function stopAutoRefresh() {
+            if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
+        }
+
+        function parseCsvLine(line, delim) {
+            if (delim !== ',') return line.split(delim).map(c => c.trim().replace(/^"|"$/g, ''));
+            const result = [];
+            let cur = '', inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const ch = line[i];
+                if (ch === '"') {
+                    if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; }
+                    else inQuotes = !inQuotes;
+                } else if (ch === ',' && !inQuotes) { result.push(cur.trim()); cur = ''; }
+                else { cur += ch; }
+            }
+            result.push(cur.trim());
+            return result;
+        }
+
+        function parseHaltsCsv(csv) {
+            // Normalise line endings — NYSE sends \r\n, leaving \r on every cell value.
+            // This silently breaks all field lookups so filters show "No halts match this filter"
+            // even when real halts exist.
+            const lines = csv.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim().split('\n');
+            if (lines.length < 2) return [];
+            const firstLine = lines[0];
+            const delim = firstLine.includes('|') ? '|' : ',';
+            const headers = parseCsvLine(firstLine, delim).map(h => h.replace(/"/g, '').toLowerCase().trim());
+            console.log('[Halts] CSV headers:', headers);
+            const rows = [];
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                const cells = parseCsvLine(line, delim);
+                const row = {};
+                headers.forEach((h, idx) => { row[h] = (cells[idx] || '').trim(); });
+                const symbol = row['symbol'] || row['ticker'] || '';
+                if (!symbol) continue; // skip blank or repeated-header rows
+                rows.push({
+                    date: row['halt date'] || row['date'] || '',
+                    haltTime: row['halt time'] || row['time'] || '',
+                    symbol,
+                    name: row['name'] || row['company name'] || row['company'] || '',
+                    exchange: row['market'] || row['exchange'] || row['mkt'] || '',
+                    reason: row['reason code'] || row['reason'] || row['halt reason'] || '',
+                    resumeDate: row['resume date'] || row['resumption date'] || '',
+                    resumeTime: row['nyse resume time'] || row['resume time'] || row['resumption time'] || row['resume trade time'] || '',
+                });
+            }
+            return rows.sort((a, b) => new Date(`${b.date} ${b.haltTime}`) - new Date(`${a.date} ${a.haltTime}`));
+        }
+        function renderHalts(filter) {
+            currentFilter = filter;
+            const tbody = document.getElementById('haltsBody');
+            const empty = document.getElementById('haltsEmpty');
+            tbody.innerHTML = '';
+            const LULD = ['T1', 'T2', 'T5', 'T6', 'LUDP', 'M', 'MWC1', 'MWC2', 'MWC3', 'MWC4'];
+            const NEWS = ['T3', 'T7', 'T8', 'T12', 'H10', 'H11'];
+            const REG = ['H4', 'H9', 'R4', 'R9', 'C11', 'D', 'U1'];
+            const isLuld = h => { const r = (h.reason || '').toUpperCase().trim(); return LULD.includes(r) || /luld|limit|volatil|circuit|pause/i.test(h.reason); };
+            const isNews = h => { const r = (h.reason || '').toUpperCase().trim(); return NEWS.includes(r) || /news/i.test(h.reason); };
+            const isReg = h => { const r = (h.reason || '').toUpperCase().trim(); return REG.includes(r) || /regulat|sec|suspension|concern/i.test(h.reason); };
+            let filtered = allHalts;
+            if (filter === 'luld') filtered = allHalts.filter(isLuld);
+            else if (filter === 'news') filtered = allHalts.filter(isNews);
+            else if (filter === 'regulatory') filtered = allHalts.filter(isReg);
+            else if (filter === 'active') filtered = allHalts.filter(h => !h.resumeTime || !h.resumeTime.trim());
+            else if (filter === 'resumed') filtered = allHalts.filter(h => h.resumeTime && h.resumeTime.trim());
+            if (!filtered.length) { empty.style.display = 'block'; return; }
+            empty.style.display = 'none';
+            filtered.forEach(halt => {
+                const tr = document.createElement('tr');
+                const typeBadge = getHaltTypeBadge(halt.reason);
+                const resumption = getHaltInfo(halt.reason, halt.haltTime, halt.resumeTime);
+                tr.innerHTML = `
+            <td>${halt.date || '—'}</td>
+            <td>${halt.haltTime || '—'}</td>
+            <td><span class="ticker-chip">${halt.symbol || '—'}</span></td>
+            <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${halt.name}">${halt.name || '—'}</td>
+            <td>${halt.exchange || '—'}</td>
+            <td><span class="halt-type ${typeBadge.cls}">${typeBadge.label}</span><div style="font-size:11px;color:#888;margin-top:3px">${halt.reason}</div></td>
+            <td>${halt.resumeTime || '<span style="color:#aaa">—</span>'}</td>
+            <td>${resumption.five && resumption.ten
+                        ? `<div style="display:flex;flex-direction:column;gap:4px">
+                     <span class="resumption-badge estimated">⏱ 5min: ${resumption.five}</span>
+                     <span class="resumption-badge estimated" style="opacity:0.7">⏱ 10min: ${resumption.ten}</span>
+                   </div>`
+                        : `<span class="resumption-badge ${resumption.cls}">${resumption.label}</span>`
+                    }</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterHalts(filter, btn) {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderHalts(filter);
+        }
+
+        window.addEventListener('load', () => { loadHalts(false); startAutoRefresh(); });
+    </script>
+</body>
+
+</html>

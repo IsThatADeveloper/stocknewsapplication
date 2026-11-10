@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="data:,">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Splits – StockDash</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        /* ── nav ── */
+        nav {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            padding: 0 20px;
+            position: sticky; top: 0; z-index: 100;
+        }
+        .nav-inner {
+            max-width: 1200px; margin: 0 auto;
+            display: flex; align-items: center; gap: 8px; height: 56px;
+        }
+        .nav-logo { color: white; font-weight: 700; font-size: 18px; margin-right: 16px; white-space: nowrap; text-decoration: none; }
+        .nav-btn {
+            background: transparent; border: 1px solid rgba(255,255,255,0.4);
+            color: white; padding: 7px 18px; border-radius: 6px;
+            font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; white-space: nowrap;
+            text-decoration: none; display: inline-flex; align-items: center;
+        }
+        .nav-btn:hover { background: rgba(255,255,255,0.2); }
+        .nav-btn.active { background: white; color: #667eea; border-color: white; }
+
+        /* ── layout ── */
+        .page { padding: 24px 20px; }
+        .inner { max-width: 1200px; margin: 0 auto; }
+        .card {
+            background: white; border-radius: 12px; padding: 28px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1); margin-bottom: 24px;
+        }
+        .card h2 { color: #333; font-size: 22px; margin-bottom: 20px; }
+
+        /* ── controls bar ── */
+        .controls-row {
+            display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;
+        }
+        .preset-btn {
+            padding: 8px 18px; border-radius: 20px;
+            border: 1.5px solid #667eea; background: white;
+            color: #667eea; font-size: 13px; font-weight: 600; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .preset-btn:hover { background: #667eea; color: white; }
+        .preset-btn.active { background: #667eea; color: white; }
+
+        .date-range-wrap {
+            display: flex; align-items: center; gap: 6px;
+            border: 1.5px solid #ddd; border-radius: 8px;
+            padding: 5px 12px; background: white;
+        }
+        .date-range-wrap label { font-size: 12px; color: #888; white-space: nowrap; }
+        .date-range-wrap input[type="date"] {
+            border: none; outline: none; font-size: 13px; color: #333; background: transparent;
+        }
+        .sep { color: #bbb; font-size: 13px; }
+
+        .btn-load {
+            display: flex; align-items: center; gap: 7px;
+            padding: 9px 22px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; border: none; border-radius: 8px;
+            font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .btn-load:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-load:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+        .btn-load svg { transition: transform 0.5s; }
+        .btn-load.spinning svg { animation: spin 0.8s linear infinite; }
+
+        /* ── meta / status ── */
+        .splits-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+        .splits-header h2 { margin-bottom: 0; }
+        .splits-meta { color: #888; font-size: 13px; margin-top: 4px; }
+
+        /* ── filters ── */
+        .filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+        .filter-btn {
+            padding: 5px 14px; border-radius: 20px; border: 1px solid #ddd;
+            background: white; font-size: 13px; cursor: pointer; transition: all 0.15s; color: #555;
+        }
+        .filter-btn:hover { border-color: #667eea; color: #667eea; }
+        .filter-btn.active { background: #667eea; color: white; border-color: #667eea; }
+
+        /* ── spinner / loading ── */
+        .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; width: 38px; height: 38px; animation: spin 1s linear infinite; margin: 0 auto 10px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .splits-loading { text-align: center; padding: 40px; color: #667eea; display: none; }
+        .splits-loading.active { display: block; }
+        .error-box { background: #fee; color: #c00; padding: 14px; border-radius: 8px; margin-top: 12px; display: none; }
+        .error-box.active { display: block; }
+
+        /* ── table ── */
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead th {
+            background: #f8f9fa; padding: 10px 14px;
+            text-align: left; font-weight: 600; color: #555;
+            border-bottom: 2px solid #e0e0e0; white-space: nowrap;
+        }
+        thead th.sortable { cursor: pointer; user-select: none; }
+        thead th.sortable:hover { color: #667eea; }
+        thead th .sort-arrow { margin-left: 4px; color: #bbb; }
+        thead th.sorted-asc .sort-arrow::after { content: ' ▲'; color: #667eea; }
+        thead th.sorted-desc .sort-arrow::after { content: ' ▼'; color: #667eea; }
+        thead th:not(.sorted-asc):not(.sorted-desc) .sort-arrow::after { content: ' ⇅'; }
+
+        tbody tr { border-bottom: 1px solid #f0f0f0; transition: background 0.1s; }
+        tbody tr:hover { background: #fafafa; }
+        tbody td { padding: 10px 14px; color: #333; vertical-align: middle; }
+
+        .ticker-chip { font-weight: 700; color: #667eea; font-size: 14px; }
+
+        .ratio-badge {
+            display: inline-block; padding: 3px 10px; border-radius: 4px;
+            font-size: 12px; font-weight: 700; white-space: nowrap;
+        }
+        .ratio-badge.forward { background: #d4edda; color: #155724; }
+        .ratio-badge.reverse { background: #f8d7da; color: #721c24; }
+        .ratio-badge.other   { background: #e2e3e5; color: #383d41; }
+
+        .empty-state { text-align: center; padding: 48px 20px; color: #aaa; }
+        .empty-state svg { margin-bottom: 12px; opacity: 0.4; }
+
+        /* ── legend / info box ── */
+        .info-box {
+            background: #f0f4ff; border-left: 4px solid #667eea;
+            padding: 12px 16px; border-radius: 0 8px 8px 0;
+            font-size: 13px; color: #555; margin-bottom: 20px;
+        }
+        .info-box strong { color: #333; }
+
+        /* ── summary chips ── */
+        .summary-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+        .summary-chip {
+            background: #f8f9fa; border: 1px solid #e0e0e0;
+            border-radius: 8px; padding: 10px 16px; text-align: center; min-width: 100px;
+        }
+        .summary-chip .chip-val { font-size: 22px; font-weight: 700; color: #333; }
+        .summary-chip .chip-lbl { font-size: 11px; color: #888; margin-top: 2px; }
+        .summary-chip.highlight { border-color: #667eea; background: #f0f4ff; }
+        .summary-chip.highlight .chip-val { color: #667eea; }
+
+        @media (max-width: 600px) {
+            table { font-size: 12px; }
+            thead th, tbody td { padding: 8px; }
+            .controls-row { flex-direction: column; align-items: stretch; }
+            .date-range-wrap { flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="index.html" class="nav-logo">📈 StockDash</a>
+        <a href="index.html" class="nav-btn">🔍 Stock Search</a>
+        <a href="halts.html" class="nav-btn">🚫 Trading Halts</a>
+        <a href="splits.html" class="nav-btn active">✂️ Stock Splits</a>
+    </div>
+</nav>
+
+<div class="page">
+    <div class="inner">
+
+        <!-- Controls card -->
+        <div class="card">
+            <div class="splits-header">
+                <div>
+                    <h2>✂️ Stock Splits</h2>
+                    <div class="splits-meta" id="splitsMeta">Select a time range and click Load.</div>
+                </div>
+                <button class="btn-load" id="loadBtn" onclick="loadSplits()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M1 4v6h6"/><path d="M23 20v-6h-6"/>
+                        <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+                    </svg>
+                    Load Splits
+                </button>
+            </div>
+
+            <!-- Quick presets -->
+            <div class="controls-row">
+                <strong style="font-size:13px;color:#555;white-space:nowrap">Quick:</strong>
+                <button class="preset-btn" onclick="setPreset('today', this)">Today</button>
+                <button class="preset-btn active" onclick="setPreset('yesterday', this)">Yesterday</button>
+                <button class="preset-btn" onclick="setPreset('week', this)">Last 7 Days</button>
+                <button class="preset-btn" onclick="setPreset('month', this)">Last 30 Days</button>
+                <button class="preset-btn" onclick="setPreset('3month', this)">Last 3 Months</button>
+
+                <!-- Custom range -->
+                <div class="date-range-wrap">
+                    <label>From</label>
+                    <input type="date" id="dateFrom">
+                    <span class="sep">→</span>
+                    <label>To</label>
+                    <input type="date" id="dateTo">
+                </div>
+            </div>
+
+            <div class="info-box">
+                <strong>Source:</strong> stockanalysis.com/actions/splits/ — Data is scraped via public proxy.
+                <strong>Forward splits</strong> (e.g. 2-for-1) increase share count and lower price.
+                <strong>Reverse splits</strong> (e.g. 1-for-10) decrease share count and raise price.
+            </div>
+
+            <div class="splits-loading" id="splitsLoading">
+                <div class="spinner"></div>
+                Fetching split data...
+            </div>
+            <div class="error-box" id="splitsError"></div>
+        </div>
+
+        <!-- Results card -->
+        <div id="splitsResults" style="display:none">
+            <div class="card">
+                <!-- Summary -->
+                <div class="summary-row" id="summaryRow"></div>
+
+                <!-- Type filter -->
+                <div class="filter-row">
+                    <button class="filter-btn active" onclick="filterSplits('all', this)">All Splits</button>
+                    <button class="filter-btn" onclick="filterSplits('forward', this)">✅ Forward Only</button>
+                    <button class="filter-btn" onclick="filterSplits('reverse', this)">⚠️ Reverse Only</button>
+                </div>
+
+                <div class="table-wrap">
+                    <table id="splitsTable">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-col="date" onclick="sortBy('date', this)">Date <span class="sort-arrow"></span></th>
+                                <th class="sortable" data-col="symbol" onclick="sortBy('symbol', this)">Symbol <span class="sort-arrow"></span></th>
+                                <th>Company</th>
+                                <th class="sortable" data-col="ratio" onclick="sortBy('ratio', this)">Split Ratio <span class="sort-arrow"></span></th>
+                                <th>Type</th>
+                                <th class="sortable" data-col="multiplier" onclick="sortBy('multiplier', this)">Price Effect <span class="sort-arrow"></span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="splitsBody"></tbody>
+                    </table>
+                    <div class="empty-state" id="splitsEmpty" style="display:none">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                        <p>No splits found for this time range / filter.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+let allSplits = [];
+let currentFilter = 'all';
+let sortState = { col: 'date', dir: 'desc' };
+
+// ── date helpers ──────────────────────────────────────────────
+function fmtDate(d) {
+    return d.toISOString().slice(0, 10);
+}
+function dateOffset(days) {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return d;
+}
+
+// ── preset logic ──────────────────────────────────────────────
+function setPreset(preset, btn) {
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const today = new Date();
+    let from, to;
+    if (preset === 'today') {
+        from = to = fmtDate(today);
+    } else if (preset === 'yesterday') {
+        const y = dateOffset(-1);
+        from = to = fmtDate(y);
+    } else if (preset === 'week') {
+        from = fmtDate(dateOffset(-7));
+        to   = fmtDate(today);
+    } else if (preset === 'month') {
+        from = fmtDate(dateOffset(-30));
+        to   = fmtDate(today);
+    } else if (preset === '3month') {
+        from = fmtDate(dateOffset(-90));
+        to   = fmtDate(today);
+    }
+    document.getElementById('dateFrom').value = from;
+    document.getElementById('dateTo').value   = to;
+    loadSplits();
+}
+
+// clear preset highlight when user edits dates manually
+['dateFrom','dateTo'].forEach(id => {
+    document.getElementById(id).addEventListener('change', () => {
+        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    });
+});
+
+// ── fetch helper ──────────────────────────────────────────────
+async function fetchWithTimeout(url, ms = 9000) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), ms);
+    try {
+        const r = await fetch(url, { signal: ctrl.signal });
+        clearTimeout(t); return r;
+    } catch(e) { clearTimeout(t); throw e; }
+}
+
+async function fetchViaProxy(url) {
+    const endpoint = `/api/proxy?url=${encodeURIComponent(url)}`;
+    const response = await fetchWithTimeout(endpoint, 12000);
+    if (!response.ok) throw new Error(`Split data source unavailable (HTTP ${response.status}).`);
+    const text = await response.text();
+    if (text.length < 200) throw new Error('Split source returned an empty or unexpected page.');
+    return text;
+}
+
+// ── parse split ratio ─────────────────────────────────────────
+function parseRatio(ratioStr) {
+    // expects formats like "2:1", "1:10", "3-for-2", "5/1" etc.
+    const s = (ratioStr || '').trim().replace(/\s*for\s*/i, ':').replace(/[\/]/g, ':');
+    const parts = s.split(':');
+    if (parts.length === 2) {
+        const a = parseFloat(parts[0]);
+        const b = parseFloat(parts[1]);
+        if (!isNaN(a) && !isNaN(b) && b !== 0) {
+            const multiplier = a / b; // >1 = forward, <1 = reverse
+            return { multiplier, raw: ratioStr.trim() };
+        }
+    }
+    return { multiplier: null, raw: ratioStr.trim() };
+}
+
+// ── scrape stockanalysis.com splits page ──────────────────────
+async function fetchAndParseSplits() {
+    const url = 'https://stockanalysis.com/actions/splits/';
+    const html = await fetchViaProxy(url);
+    const doc  = new DOMParser().parseFromString(html, 'text/html');
+
+    const rows = [];
+    // The page has a big table — grab all <tr> inside any table
+    doc.querySelectorAll('table tbody tr').forEach(tr => {
+        const cells = [...tr.querySelectorAll('td')].map(td => td.textContent.trim());
+        if (cells.length < 3) return;
+
+        // Typical columns: Date | Symbol | Company | Ratio
+        // But layout can vary — detect by content
+        let date = '', symbol = '', name = '', ratio = '';
+
+        // Try to figure out which cell is which by pattern matching
+        for (let i = 0; i < cells.length; i++) {
+            const c = cells[i];
+            if (/^\d{4}-\d{2}-\d{2}$/.test(c) || /^\w+ \d+, \d{4}$/.test(c) || /^\d+\/\d+\/\d+$/.test(c)) {
+                date = c;
+            } else if (/^[A-Z]{1,6}$/.test(c) || /^[A-Z]{1,5}\.[A-Z]$/.test(c)) {
+                symbol = c;
+            } else if (/\d+[:\-\/]\d+/.test(c) || /\d+\s+for\s+\d+/i.test(c)) {
+                ratio = c;
+            } else if (c.length > 2 && !symbol && /[a-z]/.test(c)) {
+                name = c; // first multi-char lower-case string = company name
+            }
+        }
+
+        // fallback positional guess if detection missed something
+        if (!date && cells[0]) date = cells[0];
+        if (!symbol && cells[1]) symbol = cells[1];
+        if (!name && cells[2]) name = cells[2];
+        if (!ratio && cells[3]) ratio = cells[3];
+
+        if (!symbol || !date) return;
+
+        // Normalise date to ISO format
+        let isoDate = date;
+        const parsed = new Date(date);
+        if (!isNaN(parsed)) isoDate = fmtDate(parsed);
+
+        const { multiplier, raw } = parseRatio(ratio);
+
+        rows.push({
+            date: isoDate,
+            symbol: symbol.toUpperCase(),
+            name,
+            ratioRaw: raw || ratio,
+            multiplier,
+        });
+    });
+
+    // If table parsing yielded nothing, try a text-pattern scrape
+    if (rows.length === 0) {
+        const text = doc.body ? doc.body.innerText : html;
+        const lineRe = /(\d{4}-\d{2}-\d{2})\s+([A-Z]{1,6})\s+([\w\s,\.]+?)\s+(\d+[:\-\/]\d+)/gm;
+        let m;
+        while ((m = lineRe.exec(text)) !== null) {
+            const { multiplier, raw } = parseRatio(m[4]);
+            rows.push({ date: m[1], symbol: m[2], name: m[3].trim(), ratioRaw: raw, multiplier });
+        }
+    }
+
+    return rows;
+}
+
+// ── filter by date range ──────────────────────────────────────
+function filterByDateRange(rows, from, to) {
+    const f = from ? new Date(from + 'T00:00:00') : null;
+    const t = to   ? new Date(to   + 'T23:59:59') : null;
+    return rows.filter(r => {
+        const d = new Date(r.date + 'T12:00:00');
+        if (f && d < f) return false;
+        if (t && d > t) return false;
+        return true;
+    });
+}
+
+// ── main load ─────────────────────────────────────────────────
+async function loadSplits() {
+    const from = document.getElementById('dateFrom').value;
+    const to   = document.getElementById('dateTo').value;
+
+    if (!from || !to) {
+        showError('Please select a date range first.');
+        return;
+    }
+    if (new Date(from) > new Date(to)) {
+        showError('"From" date cannot be after "To" date.');
+        return;
+    }
+
+    const btn = document.getElementById('loadBtn');
+    btn.disabled = true; btn.classList.add('spinning');
+    document.getElementById('splitsLoading').classList.add('active');
+    document.getElementById('splitsError').classList.remove('active');
+    document.getElementById('splitsResults').style.display = 'none';
+
+    try {
+        const all = await fetchAndParseSplits();
+        allSplits = filterByDateRange(all, from, to);
+
+        // default sort: newest first
+        sortState = { col: 'date', dir: 'desc' };
+        applySort();
+
+        updateSummary(allSplits);
+        renderSplits(currentFilter);
+        document.getElementById('splitsResults').style.display = 'block';
+
+        const time = new Date().toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true });
+        document.getElementById('splitsMeta').textContent =
+            `${allSplits.length} splits found · ${from === to ? from : from + ' → ' + to} · Loaded ${time}`;
+
+    } catch(err) {
+        showError(err.message);
+    } finally {
+        document.getElementById('splitsLoading').classList.remove('active');
+        btn.disabled = false; btn.classList.remove('spinning');
+    }
+}
+
+// ── summary chips ─────────────────────────────────────────────
+function updateSummary(splits) {
+    const forward = splits.filter(s => s.multiplier !== null && s.multiplier > 1).length;
+    const reverse = splits.filter(s => s.multiplier !== null && s.multiplier < 1).length;
+    const other   = splits.length - forward - reverse;
+
+    document.getElementById('summaryRow').innerHTML = `
+        <div class="summary-chip highlight">
+            <div class="chip-val">${splits.length}</div>
+            <div class="chip-lbl">Total Splits</div>
+        </div>
+        <div class="summary-chip">
+            <div class="chip-val" style="color:#155724">${forward}</div>
+            <div class="chip-lbl">Forward Splits</div>
+        </div>
+        <div class="summary-chip">
+            <div class="chip-val" style="color:#721c24">${reverse}</div>
+            <div class="chip-lbl">Reverse Splits</div>
+        </div>
+        ${other ? `<div class="summary-chip"><div class="chip-val">${other}</div><div class="chip-lbl">Other/Unknown</div></div>` : ''}
+    `;
+}
+
+// ── sort ──────────────────────────────────────────────────────
+function sortBy(col, th) {
+    if (sortState.col === col) {
+        sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+        sortState.col = col;
+        sortState.dir = col === 'date' ? 'desc' : 'asc';
+    }
+    // update header UI
+    document.querySelectorAll('thead th').forEach(t => {
+        t.classList.remove('sorted-asc', 'sorted-desc');
+    });
+    th.classList.add(sortState.dir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+    applySort();
+    renderSplits(currentFilter);
+}
+
+function applySort() {
+    const { col, dir } = sortState;
+    allSplits.sort((a, b) => {
+        let va, vb;
+        if (col === 'date')       { va = a.date; vb = b.date; }
+        else if (col === 'symbol') { va = a.symbol; vb = b.symbol; }
+        else if (col === 'ratio') { va = a.ratioRaw; vb = b.ratioRaw; }
+        else if (col === 'multiplier') { va = a.multiplier ?? 0; vb = b.multiplier ?? 0; }
+        if (va < vb) return dir === 'asc' ? -1 :  1;
+        if (va > vb) return dir === 'asc' ?  1 : -1;
+        return 0;
+    });
+}
+
+// ── filter tabs ───────────────────────────────────────────────
+function filterSplits(filter, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = filter;
+    renderSplits(filter);
+}
+
+// ── render table ──────────────────────────────────────────────
+function renderSplits(filter) {
+    const tbody = document.getElementById('splitsBody');
+    const empty = document.getElementById('splitsEmpty');
+    tbody.innerHTML = '';
+
+    let data = allSplits;
+    if (filter === 'forward') data = allSplits.filter(s => s.multiplier !== null && s.multiplier > 1);
+    if (filter === 'reverse') data = allSplits.filter(s => s.multiplier !== null && s.multiplier < 1);
+
+    if (!data.length) { empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+
+    data.forEach(s => {
+        const isForward = s.multiplier !== null && s.multiplier > 1;
+        const isReverse = s.multiplier !== null && s.multiplier < 1;
+        const typeCls   = isForward ? 'forward' : isReverse ? 'reverse' : 'other';
+        const typeLabel = isForward ? '✅ Forward' : isReverse ? '⚠️ Reverse' : '— Unknown';
+
+        let priceEffect = '—';
+        if (s.multiplier !== null) {
+            const pct = ((1 / s.multiplier - 1) * 100);
+            const sign = pct > 0 ? '+' : '';
+            priceEffect = `${sign}${pct.toFixed(1)}% per share`;
+        }
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${s.date || '—'}</td>
+            <td><span class="ticker-chip">${s.symbol}</span></td>
+            <td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${s.name}">${s.name || '—'}</td>
+            <td><strong>${s.ratioRaw || '—'}</strong></td>
+            <td><span class="ratio-badge ${typeCls}">${typeLabel}</span></td>
+            <td style="color:${isForward ? '#155724' : isReverse ? '#721c24' : '#888'}">${priceEffect}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// ── error helper ──────────────────────────────────────────────
+function showError(msg) {
+    const box = document.getElementById('splitsError');
+    box.innerHTML = `<strong>Error:</strong> ${msg}`;
+    box.classList.add('active');
+}
+
+// ── init: default to yesterday ────────────────────────────────
+window.addEventListener('load', () => {
+    const y = dateOffset(-1);
+    document.getElementById('dateFrom').value = fmtDate(y);
+    document.getElementById('dateTo').value   = fmtDate(y);
+});
+</script>
+
+</body>
+</html>
